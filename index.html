@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gemma3による画像解析LLM Sample</title>
+    <style>
+      .content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        min-height: calc(100vh - 76px); /* headerの高さ（64px）を差し引く */
+      }
+      form {
+        text-align: center;
+      }
+      #preview {
+        max-width: 300px;
+        max-height: 300px;
+        margin-top: 10px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #deleteButton {
+        margin-top: 10px;
+        display: none;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      #resultContainer {
+        margin-top: 30px;
+        max-width: 800px;
+        width: 100%;
+        display: none;
+      }
+      #resultTitle {
+        font-size: 1.2em;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      #resultContent {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        padding: 20px;
+        background-color: #f9f9f9;
+        line-height: 1.6;
+        text-align: left;
+      }
+      #loadingMessage {
+        display: none;
+        margin-top: 20px;
+        font-style: italic;
+        color: #666;
+      }
+      #resultContent > pre {
+        white-space: break-spaces;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>gemma3による画像解析LLM Sample</h1>
+    <div class="content">
+      <div class="form-container">
+        <form id="uploadForm" enctype="multipart/form-data">
+          <input type="file" id="imageInput" name="image" accept="image/*" />
+          <button type="button" id="submitButton">送信</button>
+        </form>
+        <img id="preview" src="" alt="プレビュー画像" />
+        <button id="deleteButton">添付ファイルを削除</button>
+        <div id="loadingMessage">画像を解析中です...</div>
+      </div>
+      <div id="resultContainer">
+        <div id="resultTitle">画像解析結果</div>
+        <div id="resultContent"></div>
+      </div>
+    </div>
+
+    <script>
+      const imageInput = document.getElementById("imageInput");
+      const preview = document.getElementById("preview");
+      const deleteButton = document.getElementById("deleteButton");
+      const submitButton = document.getElementById("submitButton");
+      const uploadForm = document.getElementById("uploadForm");
+
+      imageInput.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            preview.src = e.target.result;
+            preview.style.display = "block";
+            deleteButton.style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        } else {
+          preview.src = "";
+          preview.style.display = "none";
+          deleteButton.style.display = "none";
+        }
+      });
+
+      deleteButton.addEventListener("click", function () {
+        const resultContainer = document.getElementById("resultContainer");
+        const resultContent = document.getElementById("resultContent");
+
+        imageInput.value = "";
+        preview.src = "";
+        preview.style.display = "none";
+        deleteButton.style.display = "none";
+
+        // 結果表示エリアもクリア
+        resultContainer.style.display = "none";
+        resultContent.innerHTML = "";
+      });
+
+      submitButton.addEventListener("click", function () {
+        if (imageInput.files.length > 0) {
+          const loadingMessage = document.getElementById("loadingMessage");
+          const resultContainer = document.getElementById("resultContainer");
+          const resultContent = document.getElementById("resultContent");
+
+          // ローディング表示
+          loadingMessage.style.display = "block";
+          resultContainer.style.display = "none";
+          submitButton.disabled = true;
+          submitButton.textContent = "解析中...";
+
+          const formData = new FormData();
+          const fileInput = document.getElementById("imageInput");
+          formData.append("image", fileInput.files[0]);
+
+          console.log("FormDataの内容:");
+          for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+          }
+
+          fetch("/upload", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => {
+              if (response.ok) {
+                return response.json();
+              } else {
+                return response.json().then((err) => {
+                  throw new Error(
+                    err.error || "ファイルのアップロードに失敗しました"
+                  );
+                });
+              }
+            })
+            .then((data) => {
+              console.log("サーバーのレスポンス:", data);
+
+              if (data.success && data.html) {
+                // マークダウンから変換されたHTMLを表示
+                resultContent.innerHTML = data.html;
+                resultContainer.style.display = "block";
+              } else {
+                resultContent.innerHTML = "<p>結果の表示に失敗しました。</p>";
+                resultContainer.style.display = "block";
+              }
+            })
+            .catch((error) => {
+              console.error("エラー:", error);
+              resultContent.innerHTML = `<p>エラーが発生しました: ${error.message}</p>`;
+              resultContainer.style.display = "block";
+            })
+            .finally(() => {
+              // ローディング状態をリセット
+              loadingMessage.style.display = "none";
+              submitButton.disabled = false;
+              submitButton.textContent = "送信";
+            });
+        } else {
+          alert("画像を選択してください。");
+        }
+      });
+
+      // 初期状態でプレビューと削除ボタンを非表示にする
+      preview.style.display = "none";
+      deleteButton.style.display = "none";
+    </script>
+  </body>
+</html>

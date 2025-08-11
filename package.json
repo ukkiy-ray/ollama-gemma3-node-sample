@@ -1,0 +1,19 @@
+{
+  "name": "ollama-gemma3-node-sample",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "Sho Utsuki",
+  "license": "MIT",
+  "description": "",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.1.0",
+    "marked": "^16.1.2",
+    "multer": "^2.0.2",
+    "ollama": "^0.5.17"
+  }
+}
